@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  floci:
+    image: floci/floci:latest
+    container_name: floci-event-booking
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    environment:
+      # Enable all required AWS services
+      - SERVICES=dynamodb,s3,sqs,sns,apigateway,cognito-idp,lambda,cloudwatch,logs
+
+      # Storage configuration
+      - DATA_DIR=/var/lib/floci
+      - PERSISTENCE=1
+
+      # Lambda configuration for Podman
+      - LAMBDA_EXECUTOR=podman
+      - DOCKER_HOST=npipe:////./pipe/podman-desktop
+
+      # Logging
+      - DEBUG=0
+      - LOG_LEVEL=info
+
+      # S3 configuration
+      - S3_IGNORE_SUBDOMAIN_BUCKETNAME=true
+
+
+      # Disable unnecessary services
+      - DISABLE_EC2_ENDPOINT=true
+      - DISABLE_RDS_ENDPOINT=true
+      - DISABLE_ELASTICSEARCH_ENDPOINT=true
+
+    volumes:
+      # Persist Floci data across restarts
+      - ./floci-data:/var/lib/floci
+
+      # Mount Podman socket for Lambda execution (required)
+      # For rootless Podman: /run/user/$(id -u)/podman/podman.sock
+      # For root Podman: /run/podman/podman.sock
+      #- //./pipe/podman-desktop:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_floci/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+    networks:
+      - event-booking-network
+
+networks:
+  event-booking-network:
+    driver: bridge
+
+# To use this compose file with Podman:
+# 1. Start Floci: podman-compose up -d (or podman compose up -d)
+# 2. Wait for healthcheck: podman-compose logs -f floci
+# 3. Deploy: bash scripts/deploy.sh
+# 4. Start frontend: cd frontend && npm start
