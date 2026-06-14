@@ -7,14 +7,14 @@ while true; do
 
   echo ""
   echo "╔════════════════════════════════════════════════════════════════╗"
-  echo "║                   SQS Queues - Real-Time Viewer                ║"
+  echo "║                   SNS Topics - Real-Time Viewer                ║"
   echo "║                    (Refreshing every ${REFRESH_INTERVAL}s)                      ║"
   echo "╚════════════════════════════════════════════════════════════════╝"
   echo ""
   echo "⏱️  Last updated: $(date '+%Y-%m-%d %H:%M:%S')"
   echo ""
 
-  bash "$(dirname "${BASH_SOURCE[0]}")/show-sqs.sh" 2>/dev/null
+  bash "$(dirname "${BASH_SOURCE[0]}")/show-sns.sh" 2>/dev/null
 
   echo ""
   echo "Press Ctrl+C to stop watching..."

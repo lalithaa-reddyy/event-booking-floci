@@ -66,3 +66,9 @@ coverage/
 # Windows
 .env.local
 Thumbs.db
+
+# Logs
+*.log
+worker.log
+app.log
+flask.log

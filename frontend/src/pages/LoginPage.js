@@ -145,16 +145,6 @@ function LoginPage({ onLoginSuccess }) {
             )}
           </div>
         </div>
-
-        <div className="demo-credentials">
-          <h3>Demo Credentials</h3>
-          <p>
-            <strong>Email:</strong> demo@example.com
-          </p>
-          <p>
-            <strong>Password:</strong> Demo@123456
-          </p>
-        </div>
       </div>
     </div>
   );

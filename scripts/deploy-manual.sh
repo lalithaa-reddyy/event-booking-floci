@@ -52,18 +52,18 @@ log_success "Infrastructure deployed"
 log_info "Extracting Terraform outputs..."
 cd "$PROJECT_ROOT/terraform"
 
-API_ENDPOINT=$(terraform output -raw api_endpoint 2>/dev/null || echo "")
+FLASK_ENDPOINT="http://localhost:5000"
 USER_POOL_ID=$(terraform output -raw user_pool_id 2>/dev/null || echo "")
 CLIENT_ID=$(terraform output -raw user_pool_client_id 2>/dev/null || echo "")
 BOOKINGS_TABLE=$(terraform output -raw bookings_table_name 2>/dev/null || echo "")
 BOOKING_QUEUE=$(terraform output -raw booking_queue_url 2>/dev/null || echo "")
 
-if [ -z "$API_ENDPOINT" ]; then
-  log_error "Failed to extract API endpoint from Terraform. Check terraform apply output above."
+if [ -z "$USER_POOL_ID" ]; then
+  log_error "Failed to extract User Pool ID from Terraform. Check terraform apply output above."
 fi
 
 log_success "Outputs extracted:"
-log_info "  API Endpoint: $API_ENDPOINT"
+log_info "  Flask Endpoint: $FLASK_ENDPOINT"
 log_info "  User Pool ID: $USER_POOL_ID"
 log_info "  Client ID: $CLIENT_ID"
 
@@ -74,7 +74,7 @@ cd "$PROJECT_ROOT/frontend"
 cat > .env << EOF
 REACT_APP_COGNITO_USER_POOL_ID=$USER_POOL_ID
 REACT_APP_COGNITO_CLIENT_ID=$CLIENT_ID
-REACT_APP_API_ENDPOINT=$API_ENDPOINT
+REACT_APP_API_ENDPOINT=$FLASK_ENDPOINT
 REACT_APP_COGNITO_REGION=$REGION
 REACT_APP_DEBUG=false
 EOF
@@ -130,26 +130,25 @@ echo "DEPLOYMENT COMPLETE!"
 echo "=========================================="
 echo ""
 echo "Resources created with Terraform:"
-echo "  ✓ DynamoDB: Events, Bookings tables"
-echo "  ✓ SQS: BookingQueue with DLQ"
-echo "  ✓ SNS: BookingNotifications topic"
-echo "  ✓ S3: Tickets and Frontend buckets"
-echo "  ✓ Cognito: User Pool and Client"
-echo "  ✓ API Gateway: $API_ENDPOINT"
-echo "  ✓ Lambda: 4 functions with proper environment variables"
-echo "  ✓ SQS → Lambda event source mapping"
+echo "  [OK] DynamoDB: Events, Bookings tables"
+echo "  [OK] SQS: BookingQueue with DLQ"
+echo "  [OK] SNS: BookingNotifications topic"
+echo "  [OK] S3: Tickets bucket"
+echo "  [OK] Cognito: User Pool and Client"
 echo ""
 echo "Configuration:"
 echo "  User Pool ID:       $USER_POOL_ID"
 echo "  Client ID:          $CLIENT_ID"
 echo "  Bookings Table:     $BOOKINGS_TABLE"
 echo "  Booking Queue:      $BOOKING_QUEUE"
+echo "  Flask Endpoint:     $FLASK_ENDPOINT"
 echo ""
 echo "Next steps:"
-echo "  1. cd frontend && npm start"
-echo "  2. Open http://localhost:3000"
-echo "  3. Login: demo@example.com / Demo@123456"
-echo "  4. Book an event!"
+echo "  1. python app.py (start Flask backend)"
+echo "  2. cd frontend && npm start"
+echo "  3. Open http://localhost:3000"
+echo "  4. Login: demo@example.com / Demo@123456"
+echo "  5. Book an event!"
 echo ""
 echo "To clean up:"
 echo "  cd terraform && terraform destroy"
