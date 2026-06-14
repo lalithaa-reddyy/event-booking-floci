@@ -109,7 +109,7 @@ function BookingHistoryPage({ user }) {
               <div className="stat-label">Processing</div>
             </div>
             <div className="stat-card">
-              <div className="stat-value">${statistics.totalSpent.toFixed(2)}</div>
+              <div className="stat-value">${parseFloat(statistics.totalSpent).toFixed(2)}</div>
               <div className="stat-label">Total Spent</div>
             </div>
           </div>
@@ -149,7 +149,7 @@ function BookingHistoryPage({ user }) {
                   </div>
                   <div className="detail">
                     <span className="label">💰 Total Price:</span>
-                    <span className="value price">${booking.totalPrice.toFixed(2)}</span>
+                    <span className="value price">${parseFloat(booking.totalPrice).toFixed(2)}</span>
                   </div>
                   <div className="detail">
                     <span className="label">📝 Booked On:</span>
@@ -217,7 +217,7 @@ function BookingHistoryPage({ user }) {
 
                 <div className="detail-box">
                   <label>Total Price</label>
-                  <p className="price-large">${selectedBooking.totalPrice.toFixed(2)}</p>
+                  <p className="price-large">${parseFloat(selectedBooking.totalPrice).toFixed(2)}</p>
                 </div>
 
                 <div className="detail-box">
