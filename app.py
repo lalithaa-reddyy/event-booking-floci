@@ -21,7 +21,14 @@ except ImportError:
     HAS_REPORTLAB = False
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS", "DELETE", "PUT"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 
 # Configure logging
 logging.basicConfig(
@@ -45,6 +52,10 @@ limiter = Limiter(
 def require_auth(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Skip auth for OPTIONS requests (CORS preflight)
+        if request.method == 'OPTIONS':
+            return f(*args, **kwargs)
+
         auth_header = request.headers.get('Authorization')
         if not auth_header or not auth_header.startswith('Bearer '):
             return jsonify({'error': 'Missing or invalid authorization header'}), 401
