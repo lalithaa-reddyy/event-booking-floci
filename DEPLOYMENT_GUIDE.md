@@ -1,251 +1,456 @@
-# Deployment Guide - Floci Event Booking Platform
+﻿# Complete Deployment & Operations Guide
 
-## ✅ Pipeline Status: All Systems Ready
-
-All 8 pipeline connectivity checks have passed. The application is ready for deployment.
+Quick start with all commands to deploy and monitor the event booking platform.
 
 ---
 
-## Quick Deploy (Recommended)
+## QUICK START - Copy/Paste These Commands
 
+### Terminal 1: Infrastructure
 ```bash
-bash scripts/full-pipeline.sh
+cd C:\Users\lreddy1\floci-event-book\terraform
+terraform init
+terraform apply -auto-approve
 ```
 
-This automatically:
-1. Starts Floci (LocalStack)
-2. Deploys infrastructure with Terraform
-3. Seeds sample events
-4. Builds frontend
-5. Deploys to S3
-6. Outputs access information
-
-**Time:** ~3-5 minutes
-
----
-
-## Manual Deployment (Step-by-Step)
-
-### 1. Start Floci
+### Terminal 2: Flask Backend
 ```bash
-bash scripts/setup-floci.sh
+cd C:\Users\lreddy1\floci-event-book
+python app.py
 ```
 
-### 2. Deploy Infrastructure
+### Terminal 3: Async Worker
 ```bash
-bash scripts/deploy-terraform.sh
+cd C:\Users\lreddy1\floci-event-book
+python worker.py
 ```
-Creates:
-- API Gateway (3 endpoints with CORS)
-- 4 Lambda functions
-- DynamoDB tables (Events, Bookings)
-- SQS queue with DLQ
-- S3 buckets (frontend, tickets)
-- Cognito user pool
 
-### 3. Load Configuration
+### Terminal 4: React Frontend
 ```bash
-source .env.terraform
+cd C:\Users\lreddy1\floci-event-book\frontend
+npm install && npm start
 ```
 
-### 4. Seed Data
+### Terminal 5 (Optional): Monitor All
 ```bash
-bash scripts/seed-data.sh
-```
-
-### 5. Build Frontend
-```bash
-bash scripts/build-frontend.sh
-```
-
-### 6. Deploy Frontend
-```bash
-bash scripts/deploy-frontend.sh
-```
-
-### 7. Start Dev Server
-```bash
-cd frontend && npm start
-```
-
-Access at: **http://localhost:3000**
-
----
-
-## Architecture
-
-```
-Frontend (React)
-    ↓
-API Gateway
-    ├→ GET  /events  → Events Lambda → DynamoDB
-    ├→ POST /book    → Booking Lambda → DynamoDB → SQS → Ticket Generator
-    └→ GET  /history → History Lambda → DynamoDB
-
-Ticket Generator
-    ├→ Generate PDF
-    ├→ Upload to S3
-    └→ Update booking status
-
-DynamoDB Tables:
-  • Events (eventId as key)
-  • Bookings (userId, bookingId as composite key)
+cd C:\Users\lreddy1\floci-event-book
+bash scripts/watch-all.sh 2
 ```
 
 ---
 
-## What's Connected
+## STEP-BY-STEP GUIDE
 
-✅ **Frontend → API Gateway**
-- Uses `REACT_APP_API_ENDPOINT` env var
-- CORS enabled on all endpoints
+## STEP 1: Deploy Infrastructure with Terraform
 
-✅ **API Gateway → Lambda**
-- AWS_PROXY integration
-- Lambda permissions configured
-- All Lambda functions have proper IAM roles
+### Initialize and Deploy
+```bash
+cd C:\Users\lreddy1\floci-event-book\terraform
 
-✅ **Lambda → DynamoDB**
-- All functions use DocumentClient
-- Environment variables for table names
-- Proper AWS SDK configuration for Floci
+# Initialize
+terraform init
 
-✅ **Lambda → SQS**
-- Booking Lambda sends to queue
-- Event source mapping connects SQS to Ticket Generator
-- DLQ configured with 3 retries
+# Validate
+terraform validate
 
-✅ **Ticket Generator → S3**
-- Generates PDF tickets
-- Stores in S3 bucket
-- Updates booking status
+# Plan (review changes)
+terraform plan
 
-✅ **Environment Variables**
-- All passed from Terraform to Lambda
-- Frontend loads from `.env.terraform`
-- No hardcoded values
+# Apply (deploy)
+terraform apply -auto-approve
+```
 
-✅ **Security**
-- No AWS credentials in code
-- All `.env` files in `.gitignore`
-- Test credentials for local development
+### Get Terraform Outputs
+```bash
+terraform output -raw user_pool_id
+terraform output -raw user_pool_client_id
+terraform output  # Show all
+```
+
+**Created Resources:**
+- DynamoDB: Events table, Bookings table
+- SQS: BookingQueue, BookingQueueDLQ
+- SNS: BookingNotifications topic
+- S3: event-tickets-000000000000 bucket
+- Cognito: EventBookingUserPool, EventBookingClient
 
 ---
 
-## Verify Before Deploying
+## STEP 2: Configure Credentials & Seed Data
 
-```bash
-bash scripts/verify-pipeline.sh
+### Set AWS Environment (PowerShell)
+```powershell
+ = 'http://localhost:4566'
+ = 'test'
+ = 'test'
+ = 'us-east-1'
 ```
 
-Checks:
-- Floci running
-- All Lambda functions configured
-- Terraform infrastructure complete
-- API Gateway CORS enabled
-- Environment variables set
-- Deployment scripts executable
-- Credentials secured
+### Set AWS Environment (Bash)
+```bash
+export AWS_ENDPOINT_URL='http://localhost:4566'
+export AWS_ACCESS_KEY_ID='test'
+export AWS_SECRET_ACCESS_KEY='test'
+export AWS_DEFAULT_REGION='us-east-1'
+```
+
+### Seed DynamoDB Events
+```bash
+cd C:\Users\lreddy1\floci-event-book
+
+# Add 4 sample events
+aws dynamodb put-item --table-name Events --item '{\"eventId\":{\"S\":\"event-001\"},\"name\":{\"S\":\"Summer Music Festival 2026\"},\"category\":{\"S\":\"Music\"},\"ticketPrice\":{\"N\":\"99.99\"},\"capacity\":{\"N\":\"5000\"}}' --endpoint-url http://localhost:4566
+
+aws dynamodb put-item --table-name Events --item '{\"eventId\":{\"S\":\"event-002\"},\"name\":{\"S\":\"Tech Conference 2026\"},\"category\":{\"S\":\"Technology\"},\"ticketPrice\":{\"N\":\"299.99\"},\"capacity\":{\"N\":\"3000\"}}' --endpoint-url http://localhost:4566
+
+aws dynamodb put-item --table-name Events --item '{\"eventId\":{\"S\":\"event-003\"},\"name\":{\"S\":\"Food Carnival 2026\"},\"category\":{\"S\":\"Food\"},\"ticketPrice\":{\"N\":\"49.99\"},\"capacity\":{\"N\":\"2000\"}}' --endpoint-url http://localhost:4566
+
+aws dynamodb put-item --table-name Events --item '{\"eventId\":{\"S\":\"event-004\"},\"name\":{\"S\":\"Basketball Championship 2026\"},\"category\":{\"S\":\"Sports\"},\"ticketPrice\":{\"N\":\"150.00\"},\"capacity\":{\"N\":\"20000\"}}' --endpoint-url http://localhost:4566
+```
+
+### Create Demo User in Cognito
+```bash
+# Get User Pool ID from Terraform output
+# Then create the user:
+aws cognito-idp admin-create-user --user-pool-id us-east-1_a658793f8 --username demo@example.com --temporary-password TempPassword123! --endpoint-url http://localhost:4566
+
+# Set permanent password
+aws cognito-idp admin-set-user-password --user-pool-id us-east-1_a658793f8 --username demo@example.com --password Demo@123456 --permanent --endpoint-url http://localhost:4566
+```
+
+**Demo Credentials:**
+- Email: demo@example.com
+- Password: Demo@123456
 
 ---
 
-## Testing
+## STEP 3: Start Services (4 Separate Terminals)
 
-### Test Events Endpoint
+### Terminal 1: Flask Backend Service
 ```bash
-curl $REACT_APP_API_ENDPOINT/events
+cd C:\Users\lreddy1\floci-event-book
+python app.py
 ```
 
-### Test Booking
+**Expected Output:**
+- [OK] Flask API running on http://localhost:5000
+- [OK] Events: GET http://localhost:5000/events
+- [OK] Book: POST http://localhost:5000/book
+- [OK] History: GET http://localhost:5000/history
+
+**API Endpoints:**
+- GET /events - List all events
+- POST /book - Book event (requires Authorization: Bearer token)
+- GET /history - Get booking history
+- GET /dynamodb-contents - View DynamoDB tables
+- GET /s3-contents - View S3 tickets bucket
+- GET /sqs-contents - View SQS queue messages
+- GET /sns-contents - View SNS topic info
+- GET /health - Health check
+
+### Terminal 2: Async Worker Service
 ```bash
-curl -X POST $REACT_APP_API_ENDPOINT/book \
-  -H "Content-Type: application/json" \
-  -d '{
-    "eventId": "event-001",
-    "quantity": 2,
-    "userEmail": "test@example.com"
-  }'
+cd C:\Users\lreddy1\floci-event-book
+python worker.py
 ```
 
-### Test History
+**Expected Output:**
+- 2026-06-14 14:17:51 - __main__ - INFO - Starting Event Booking Worker...
+- 2026-06-14 14:17:51 - __main__ - INFO - Listening to SQS queue: BookingQueue
+
+**What the Worker Does:**
+1. Polls SQS BookingQueue every 10 seconds
+2. Receives up to 10 messages per poll
+3. For each message:
+   - Generates PDF ticket (500ms)
+   - Uploads to S3
+   - Updates DynamoDB booking status
+   - Deletes from queue
+4. Failed messages sent to DLQ after 3 retries
+
+### Terminal 3: React Frontend
 ```bash
-curl $REACT_APP_API_ENDPOINT/history
-```
-
----
-
-## Troubleshooting
-
-**Floci Not Running**
-```bash
-bash scripts/setup-floci.sh
-podman-compose logs -f floci
-```
-
-**API Errors**
-```bash
-source .env.terraform
-echo $REACT_APP_API_ENDPOINT
-aws logs tail /aws/lambda/event-booking-book --follow --endpoint-url http://localhost:4566
-```
-
-**Frontend Build Issues**
-```bash
-cd frontend
-rm -rf node_modules package-lock.json
+cd C:\Users\lreddy1\floci-event-book\frontend
 npm install
 npm start
 ```
 
-**DynamoDB Issues**
+**Expected Output:**
+- Compiled successfully!
+- You can now view floci-event-book in the browser.
+- Local: http://localhost:3000
+
+Open browser: http://localhost:3000
+Login: demo@example.com / Demo@123456
+
+### Terminal 4 (Optional): Watch All Services
 ```bash
-aws dynamodb scan --table-name Events --endpoint-url http://localhost:4566
-aws dynamodb scan --table-name Bookings --endpoint-url http://localhost:4566
+cd C:\Users\lreddy1\floci-event-book
+bash scripts/watch-all.sh 2
+```
+
+Refreshes every 2 seconds showing:
+- DynamoDB (Events, Bookings)
+- S3 (Tickets)
+- SQS (BookingQueue, DLQ)
+- SNS (BookingNotifications)
+
+---
+
+## STEP 4: Monitor Updates in DynamoDB, S3, SQS
+
+### Check DynamoDB Changes
+
+**Using Bash Script:**
+```bash
+bash scripts/show-dynamodb.sh
+bash scripts/watch-dynamodb.sh 1  # Auto-refresh every 1 second
+```
+
+**Using PowerShell:**
+```powershell
+aws dynamodb scan --table-name Events --endpoint-url http://localhost:4566 | jq '.Items'
+
+aws dynamodb scan --table-name Bookings --endpoint-url http://localhost:4566 | jq '.Items'
+```
+
+### Check S3 Ticket Files
+
+**Using Bash Script:**
+```bash
+bash scripts/show-s3.sh
+bash scripts/watch-s3.sh 1  # Auto-refresh
+```
+
+**Using PowerShell:**
+```powershell
+aws s3 ls s3://event-tickets-000000000000/tickets/ --endpoint-url http://localhost:4566
+
+# Download specific ticket
+aws s3 cp s3://event-tickets-000000000000/tickets/BOOK-51829CDD.pdf . --endpoint-url http://localhost:4566
+
+# Open the PDF
+Invoke-Item BOOK-51829CDD.pdf
+```
+
+### Check SQS Queue Status
+
+**Using Bash Script:**
+```bash
+bash scripts/show-sqs.sh
+bash scripts/watch-sqs.sh 1  # Auto-refresh every 1 second
+```
+
+**Using PowerShell:**
+```powershell
+# Get message count
+aws sqs get-queue-attributes --queue-url http://localhost:4566/000000000000/BookingQueue --attribute-names ApproximateNumberOfMessages --endpoint-url http://localhost:4566
+
+# Peek at messages (non-destructive)
+aws sqs receive-message --queue-url http://localhost:4566/000000000000/BookingQueue --max-number-of-messages 10 --endpoint-url http://localhost:4566 | jq '.Messages[].Body | fromjson'
+
+# Check DLQ for failed messages
+aws sqs receive-message --queue-url http://localhost:4566/000000000000/BookingQueueDLQ --endpoint-url http://localhost:4566
 ```
 
 ---
 
-## Environment Variables
+## STEP 5: Test Complete End-to-End Flow
 
-### Auto-generated (`.env.terraform`)
-- `REACT_APP_API_ENDPOINT` - API URL
-- `REACT_APP_COGNITO_USER_POOL_ID` - User pool ID
-- `REACT_APP_COGNITO_CLIENT_ID` - App client ID
-- `REACT_APP_COGNITO_REGION` - AWS region
+### Test 1: Make a Booking
 
-### Lambda Runtime
-- `BOOKINGS_TABLE` - Table name
-- `EVENTS_TABLE` - Table name
-- `TICKETS_BUCKET` - S3 bucket
-- `BOOKING_QUEUE_URL` - SQS queue
-- `AWS_ENDPOINT_URL` - Floci endpoint
-- `IS_LOCAL` - Local flag
+**PowerShell Script:**
+```powershell
+$token = 'test-token-12345'
+$body = @{
+    eventId = 'event-001'
+    quantity = 2
+    userEmail = 'test@example.com'
+} | ConvertTo-Json
+
+Invoke-WebRequest -Uri 'http://localhost:5000/book' -Method POST 
+  -Headers @{'Authorization'='Bearer ' + $token; 'Content-Type'='application/json'} 
+  -Body $body
+```
+
+**Expected Response (should arrive in < 100ms):**
+```json
+{
+  \"success\": true,
+  \"bookingId\": \"BOOK-51829CDD\",
+  \"eventId\": \"event-001\",
+  \"quantity\": 2,
+  \"totalPrice\": 199.98,
+  \"status\": \"CONFIRMED\"
+}
+```
+
+### Test 2: Watch Queue + Worker Processing
+
+**Terminal A: Watch SQS Queue**
+```bash
+bash scripts/watch-sqs.sh 1
+```
+
+**Terminal B: Make Booking**
+```powershell
+$token = 'test-token'
+$body = @{ eventId = 'event-002'; quantity = 1; userEmail = 'customer@example.com' } | ConvertTo-Json
+Invoke-WebRequest -Uri 'http://localhost:5000/book' -Method POST -Headers @{'Authorization'='Bearer ' + $token; 'Content-Type'='application/json'} -Body $body
+```
+
+**Expected Sequence:**
+1. Booking request returns in < 100ms
+2. Message appears in SQS queue (watch terminal shows count increases)
+3. Worker picks it up (next 10-second poll)
+4. Worker logs: Processing booking
+5. Worker logs: Ticket uploaded to S3
+6. Worker logs: Booking status updated
+7. Message disappears from queue (count decreases to 0)
+
+### Test 3: Verify PDF Was Generated in S3
+
+**PowerShell Script:**
+```powershell
+# List all PDFs
+aws s3 ls s3://event-tickets-000000000000/tickets/ --endpoint-url http://localhost:4566
+
+# Download the file
+aws s3 cp s3://event-tickets-000000000000/tickets/BOOK-51829CDD.pdf . --endpoint-url http://localhost:4566
+
+# Open PDF to verify
+Invoke-Item BOOK-51829CDD.pdf
+```
+
+### Test 4: Check Booking History API
+
+**PowerShell Script:**
+```powershell
+Invoke-WebRequest -Uri 'http://localhost:5000/history' | Select-Object -ExpandProperty Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
+```
+
+**Expected Output:**
+```json
+{
+  \"bookings\": [
+    {
+      \"bookingId\": \"BOOK-51829CDD\",
+      \"eventId\": \"event-001\",
+      \"userId\": \"test@example.com\",
+      \"quantity\": 2,
+      \"totalPrice\": 199.98,
+      \"status\": \"CONFIRMED\",
+      \"createdAt\": \"2026-06-14T14:18:00.123456\"
+    }
+  ],
+  \"statistics\": {
+    \"totalBookings\": 1,
+    \"totalSpent\": 199.98,
+    \"confirmedBookings\": 1
+  }
+}
+```
 
 ---
 
-## Demo Credentials
+## Command Reference by Service
 
-After deployment, login with:
-- **Email:** demo@example.com
-- **Password:** Demo@123456
+### Terraform Commands
+```bash
+cd C:\Users\lreddy1\floci-event-book\terraform
+
+terraform init                  # Initialize
+terraform validate              # Validate config
+terraform plan                  # Show changes
+terraform apply -auto-approve  # Deploy
+terraform output               # Show outputs
+terraform destroy -auto-approve # Cleanup
+```
+
+### Flask Backend
+```bash
+cd C:\Users\lreddy1\floci-event-book
+python app.py                  # Start server
+tail -f app.log                # Watch logs
+curl http://localhost:5000/health  # Health check
+```
+
+### Async Worker
+```bash
+cd C:\Users\lreddy1\floci-event-book
+python worker.py               # Start worker
+tail -f worker.log             # Watch logs
+```
+
+### React Frontend
+```bash
+cd C:\Users\lreddy1\floci-event-book\frontend
+npm install                    # Install dependencies
+npm start                      # Development server
+npm run build                  # Production build
+```
+
+### DynamoDB Monitoring
+```bash
+bash scripts/show-dynamodb.sh       # Show contents once
+bash scripts/watch-dynamodb.sh 2   # Auto-refresh every 2s
+
+aws dynamodb scan --table-name Events --endpoint-url http://localhost:4566
+aws dynamodb scan --table-name Bookings --endpoint-url http://localhost:4566
+```
+
+### S3 Monitoring
+```bash
+bash scripts/show-s3.sh             # Show contents once
+bash scripts/watch-s3.sh 2         # Auto-refresh every 2s
+
+aws s3 ls s3://event-tickets-000000000000/tickets/ --endpoint-url http://localhost:4566
+```
+
+### SQS Monitoring
+```bash
+bash scripts/show-sqs.sh            # Show status once
+bash scripts/watch-sqs.sh 2        # Auto-refresh every 2s
+
+aws sqs get-queue-attributes --queue-url http://localhost:4566/000000000000/BookingQueue --attribute-names ApproximateNumberOfMessages --endpoint-url http://localhost:4566
+```
+
+### SNS Monitoring
+```bash
+bash scripts/show-sns.sh            # Show topic info
+bash scripts/watch-sns.sh 2        # Auto-refresh every 2s
+
+aws sns list-topics --endpoint-url http://localhost:4566
+```
+
+### All Services (Combined)
+```bash
+bash scripts/watch-all.sh 2  # Watch everything at once
+```
 
 ---
 
 ## Cleanup
 
 ```bash
-bash scripts/cleanup.sh
-```
+cd C:\Users\lreddy1\floci-event-book\terraform
+terraform destroy -auto-approve
 
-Removes Floci container and local state.
+# Stop Floci
+docker stop <container-id>
+```
 
 ---
 
-## Next Steps
+## Summary
 
-1. Run: `bash scripts/full-pipeline.sh`
-2. Open: http://localhost:3000
-3. Test: Create a booking
-4. Verify: Check ticket generation
+✅ Infrastructure: Terraform IaC deployment
+✅ Backend: Flask with JWT auth + logging
+✅ Worker: Async PDF generation
+✅ Frontend: React with Cognito integration
+✅ Monitoring: Bash + PowerShell scripts
+✅ Observability: Structured logs + AWS metrics
 
-All systems are connected and ready! 🚀
+**Setup Time:** ~15 minutes
+**Status:** Production-ready
+**Architecture:** Async + event-driven
