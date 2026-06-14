@@ -4,7 +4,75 @@ Quick start with all commands to deploy and monitor the event booking platform.
 
 ---
 
+## STEP 0: Start Floci (LocalStack) - DO THIS FIRST!
+
+Floci must be running before you deploy infrastructure with Terraform.
+
+### Option 1: Docker (Recommended)
+
+**PowerShell:**
+```powershell
+docker run -d -p 4566:4566 --name floci localstack/localstack:latest
+```
+
+**Bash:**
+```bash
+docker run -d -p 4566:4566 --name floci localstack/localstack:latest
+```
+
+**Verify Floci is Running:**
+```powershell
+# PowerShell
+$response = Invoke-WebRequest -Uri "http://localhost:4566/_floci/health" -SkipHttpErrorCheck
+if ($response.StatusCode -eq 200) { Write-Host "✓ Floci is running" } else { Write-Host "✗ Floci not responding" }
+```
+
+```bash
+# Bash
+curl http://localhost:4566/_floci/health
+# Should return: {"status":"running"} or similar
+```
+
+### Option 2: Floci CLI (if installed)
+
+```bash
+floci up
+```
+
+### Option 3: Docker Compose
+
+```bash
+docker-compose up -d
+# (if docker-compose.yml exists in project)
+```
+
+### Check Container Status
+
+```powershell
+# List running containers
+docker ps | findstr floci
+
+# View logs
+docker logs -f floci
+
+# Stop if needed
+docker stop floci
+
+# Start again
+docker start floci
+```
+
+---
+
 ## QUICK START - Copy/Paste These Commands
+
+### Terminal 0: Start Floci (Required First!)
+```powershell
+docker run -d -p 4566:4566 --name floci localstack/localstack:latest
+
+# Verify it's running
+curl http://localhost:4566/_floci/health
+```
 
 ### Terminal 1: Infrastructure
 ```bash
@@ -39,11 +107,91 @@ bash scripts/watch-all.sh 2
 
 ---
 
+## EXECUTION ORDER (Important!)
+
+```
+1. START FLOCI (Docker)          ← Do this FIRST
+   ↓
+2. DEPLOY INFRASTRUCTURE         ← Terraform needs Floci running
+   ↓
+3. SEED DATABASE & CREATE USER  ← AWS CLI commands
+   ↓
+4. START SERVICES (4 terminals) ← Flask, Worker, Frontend, Monitor
+   ↓
+5. TEST & MONITOR              ← Make bookings, watch flow
+```
+
+---
+
 ## STEP-BY-STEP GUIDE
 
-## STEP 1: Deploy Infrastructure with Terraform
+## STEP 1: Start Floci (LocalStack)
 
-### Initialize and Deploy
+### 1.1 Start Floci Container
+
+**PowerShell:**
+```powershell
+# Start Floci
+docker run -d -p 4566:4566 --name floci localstack/localstack:latest
+
+# Wait a few seconds for startup
+Start-Sleep -Seconds 5
+
+# Verify it's running
+Invoke-WebRequest -Uri "http://localhost:4566/_floci/health"
+```
+
+**Bash:**
+```bash
+# Start Floci
+docker run -d -p 4566:4566 --name floci localstack/localstack:latest
+
+# Wait for startup
+sleep 5
+
+# Verify
+curl http://localhost:4566/_floci/health
+```
+
+### 1.2 Check Floci Status
+
+**PowerShell:**
+```powershell
+# Check if running
+docker ps | findstr floci
+
+# View logs
+docker logs floci | tail -20
+
+# Full health check
+Invoke-WebRequest -Uri "http://localhost:4566/_floci/health" | Select-Object -ExpandProperty Content
+```
+
+**Expected Output:**
+```
+CONTAINER ID   IMAGE                          STATUS
+abc123def456   localstack/localstack:latest   Up 2 minutes
+```
+
+### 1.3 Troubleshooting Floci
+
+```powershell
+# Port already in use?
+Get-NetTCPConnection -LocalPort 4566
+
+# Stop existing container
+docker stop floci
+docker rm floci
+
+# Start fresh
+docker run -d -p 4566:4566 --name floci localstack/localstack:latest
+```
+
+---
+
+## STEP 2: Deploy Infrastructure with Terraform
+
+### 2.1 Initialize and Deploy
 ```bash
 cd C:\Users\lreddy1\floci-event-book\terraform
 
@@ -76,17 +224,17 @@ terraform output  # Show all
 
 ---
 
-## STEP 2: Configure Credentials & Seed Data
+## STEP 3: Configure Credentials & Seed Data
 
-### Set AWS Environment (PowerShell)
+### 3.1 Set AWS Environment (PowerShell)
 ```powershell
- = 'http://localhost:4566'
- = 'test'
- = 'test'
- = 'us-east-1'
+$env:AWS_ENDPOINT_URL = 'http://localhost:4566'
+$env:AWS_ACCESS_KEY_ID = 'test'
+$env:AWS_SECRET_ACCESS_KEY = 'test'
+$env:AWS_DEFAULT_REGION = 'us-east-1'
 ```
 
-### Set AWS Environment (Bash)
+### 3.2 Set AWS Environment (Bash)
 ```bash
 export AWS_ENDPOINT_URL='http://localhost:4566'
 export AWS_ACCESS_KEY_ID='test'
@@ -94,7 +242,7 @@ export AWS_SECRET_ACCESS_KEY='test'
 export AWS_DEFAULT_REGION='us-east-1'
 ```
 
-### Seed DynamoDB Events
+### 3.3 Seed DynamoDB Events
 ```bash
 cd C:\Users\lreddy1\floci-event-book
 
@@ -108,7 +256,7 @@ aws dynamodb put-item --table-name Events --item '{\"eventId\":{\"S\":\"event-00
 aws dynamodb put-item --table-name Events --item '{\"eventId\":{\"S\":\"event-004\"},\"name\":{\"S\":\"Basketball Championship 2026\"},\"category\":{\"S\":\"Sports\"},\"ticketPrice\":{\"N\":\"150.00\"},\"capacity\":{\"N\":\"20000\"}}' --endpoint-url http://localhost:4566
 ```
 
-### Create Demo User in Cognito
+### 3.4 Create Demo User in Cognito
 ```bash
 # Get User Pool ID from Terraform output
 # Then create the user:
@@ -124,7 +272,7 @@ aws cognito-idp admin-set-user-password --user-pool-id us-east-1_a658793f8 --use
 
 ---
 
-## STEP 3: Start Services (4 Separate Terminals)
+## STEP 4: Start Services (4 Separate Terminals)
 
 ### Terminal 1: Flask Backend Service
 ```bash
@@ -197,7 +345,7 @@ Refreshes every 2 seconds showing:
 
 ---
 
-## STEP 4: Monitor Updates in DynamoDB, S3, SQS
+## STEP 5: Monitor Updates in DynamoDB, S3, SQS
 
 ### Check DynamoDB Changes
 
@@ -255,7 +403,7 @@ aws sqs receive-message --queue-url http://localhost:4566/000000000000/BookingQu
 
 ---
 
-## STEP 5: Test Complete End-to-End Flow
+## STEP 6: Test Complete End-to-End Flow
 
 ### Test 1: Make a Booking
 
