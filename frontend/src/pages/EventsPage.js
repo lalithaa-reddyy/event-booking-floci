@@ -144,7 +144,7 @@ function EventsPage({ user }) {
                   </div>
                   <div className="detail-item">
                     <span className="label">💰 Price:</span>
-                    <span className="value price">${event.ticketPrice.toFixed(2)}</span>
+                    <span className="value price">${parseFloat(event.ticketPrice).toFixed(2)}</span>
                   </div>
                   <div className="detail-item">
                     <span className="label">🎫 Available:</span>
@@ -197,11 +197,11 @@ function EventsPage({ user }) {
                   </div>
                   <div className="detail">
                     <label>Tickets:</label>
-                    <span>{booking.quantity} × ${selectedEvent.ticketPrice.toFixed(2)}</span>
+                    <span>{booking.quantity} × ${parseFloat(selectedEvent.ticketPrice).toFixed(2)}</span>
                   </div>
                   <div className="detail">
                     <label>Total Price:</label>
-                    <span className="total-price">${booking.totalPrice.toFixed(2)}</span>
+                    <span className="total-price">${parseFloat(booking.totalPrice).toFixed(2)}</span>
                   </div>
                   <div className="detail">
                     <label>Status:</label>
@@ -229,7 +229,7 @@ function EventsPage({ user }) {
                     <strong>Location:</strong> {selectedEvent.location}
                   </p>
                   <p>
-                    <strong>Price per ticket:</strong> ${selectedEvent.ticketPrice.toFixed(2)}
+                    <strong>Price per ticket:</strong> ${parseFloat(selectedEvent.ticketPrice).toFixed(2)}
                   </p>
                 </div>
 
@@ -253,7 +253,7 @@ function EventsPage({ user }) {
                     <strong>Total:</strong>
                   </p>
                   <p className="total-amount">
-                    ${(selectedEvent.ticketPrice * quantity).toFixed(2)}
+                    ${(parseFloat(selectedEvent.ticketPrice) * quantity).toFixed(2)}
                   </p>
                 </div>
 
