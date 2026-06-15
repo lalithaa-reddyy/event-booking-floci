@@ -70,12 +70,12 @@ Install these before running the application:
 
 - **Docker/Podman** — For running Floci (AWS emulator)
   ```bash
-  docker --version   # or podman --version
+ podman --version # or  docker --version   
   ```
 
 - **Docker Compose/Podman Compose** — Orchestrating containers
   ```bash
-  docker-compose --version   # or podman-compose --version
+podman-compose --version  # or docker-compose --version  
   ```
 
 - **Git** — Version control
@@ -94,12 +94,13 @@ cd floci-event-book
 ### Step 2: Start Floci (AWS Local Emulator)
 ```bash
 # Start Floci container
-docker-compose up -d
-# or if using Podman:
+Podman:
 # podman-compose up -d
+# or if using docker:
+docker-compose up -d
 
 # Wait for health check (15-30 seconds)
-docker-compose logs -f floci
+podman-compose logs -f floci
 
 # Verify it's ready (Ctrl+C to stop logs)
 curl http://localhost:4566/_floci/health
@@ -171,7 +172,7 @@ Run these commands in **separate terminals** (keep all running):
 
 ```bash
 # Terminal 1: Start Floci
-docker-compose up -d && docker-compose logs -f floci
+podman-compose up -d && podman-compose logs -f floci
 
 # Terminal 2: Start Flask API
 python app.py
@@ -303,10 +304,10 @@ Authorization: Bearer <your_jwt_token>
 ### Issue: "Connection refused" error
 ```bash
 # Check if Floci is running
-docker-compose ps
+podman ps
 
 # If not running, start it
-docker-compose up -d
+podman-compose up -d
 
 # Check health
 curl http://localhost:4566/_floci/health
@@ -495,11 +496,3 @@ tail -f worker.log
 # Floci AWS emulator
 docker-compose logs floci
 ```
-
-## License
-
-This project is provided for learning and development purposes.
-
----
-
-**Happy booking! 🎫**
