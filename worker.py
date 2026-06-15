@@ -8,6 +8,7 @@ import boto3
 import json
 import logging
 import time
+from datetime import datetime
 from io import BytesIO
 from decimal import Decimal
 
@@ -128,7 +129,7 @@ def update_booking_status(booking_id, user_id, status):
             ExpressionAttributeNames={'#status': 'status'},
             ExpressionAttributeValues={
                 ':status': status,
-                ':timestamp': time.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+                ':timestamp': datetime.utcnow().isoformat() + 'Z'
             }
         )
         logger.info(f"Booking {booking_id} status updated to {status}")
